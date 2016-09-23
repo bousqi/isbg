@@ -76,6 +76,9 @@ import string
 import time
 import atexit
 
+import errno
+from socket import error as socket_error
+
 try:
     from hashlib import md5
 except ImportError:
@@ -117,6 +120,7 @@ exitcodeimap = 11       # there was an IMAP level error
 exitcodespamc = 12      # error of communication between spamc and spamd
 exitcodetty = 20        # error because of non interative terminal
 exitcodelocked = 30     # there's certainly another isbg running
+exitcodenetwork = 40    # no network available
 
 # IMAP implementation detail
 # Courier IMAP ignores uid fetches where more than a certain number are listed
@@ -418,10 +422,19 @@ def assertok(res, *args):
 
 # Main code starts here
 
-if opts["--nossl"] is True:
-    imap = imaplib.IMAP4(imaphost, imapport)
-else:
-    imap = imaplib.IMAP4_SSL(imaphost, imapport)
+try:
+    if opts["--nossl"] is True:
+        imap = imaplib.IMAP4(imaphost, imapport)
+    else:
+        imap = imaplib.IMAP4_SSL(imaphost, imapport)
+except socket_error as serr:
+    if serr.errno != errno.ECONNREFUSED:
+        # Not the error we are looking for, re-raise
+        raise serr
+    # connection refused
+    # handle here
+    sys.exit(exitcodenetwork)
+
 
 # Authenticate (only simple supported)
 res = imap.login(imapuser, imappasswd)
