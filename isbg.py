@@ -428,7 +428,7 @@ try:
     else:
         imap = imaplib.IMAP4_SSL(imaphost, imapport)
 except socket_error as serr:
-    if serr.errno != errno.ECONNREFUSED:
+    if serr.errno != errno.ENETUNREACH:
         # Not the error we are looking for, re-raise
         raise serr
     # connection refused
